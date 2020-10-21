@@ -1,3 +1,9 @@
+/**
+ * updated: 2020-10-21
+ * v0.0.1
+ * 
+ */
+
 import { Injectable } from '@angular/core';
 import { HttpRequest, HttpHandler, HttpEvent, HttpInterceptor } from '@angular/common/http';
 import { AuthService } from './auth.service';

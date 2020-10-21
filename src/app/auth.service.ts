@@ -1,3 +1,9 @@
+/**
+ * updated: 2020-10-21
+ * v0.0.1
+ * 
+ */
+
 import { Injectable } from '@angular/core';
 import createAuth0Client from '@auth0/auth0-spa-js';
 import Auth0Client from '@auth0/auth0-spa-js/dist/typings/Auth0Client';
@@ -69,7 +75,7 @@ export class AuthService {
     tap(() => {
       // *info: We need to use the URL with code and state store in the service because
       // the URL will be cleaned with the Navigation Start Event (angular booststrap)
-      log('this.currentHref', { currentHref: this.currentHref });
+      log('this.auth0Client$ > this.currentHref', { currentHref: this.currentHref });
     }),
     concatMap((client: Auth0Client) =>
       from(client.handleRedirectCallback(this.currentHref))
@@ -84,9 +90,15 @@ export class AuthService {
   constructor(private router: Router) {
     // On initial load, check authentication state with authorization server
     // Set up local auth streams if user is already authenticated
-    this.localAuthSetup();
+    const params = this.currentHref;
+    log('handleAuthCallback > params', { params });
+
+    if (params.includes('code=') && params.includes('state=')) {
+      this.handleAuthCallback();
+    } else { 
+      this.localAuthSetup();
+    }
     // Handle redirect from Auth0 login
-    this.handleAuthCallback();
   }
 
   // When calling, options can be passed if desired
@@ -139,13 +151,18 @@ export class AuthService {
   }
 
   private handleAuthCallback() {
+    log('handleAuthCallback > ');
     // Call when app reloads after user logs in with Auth0
-    const params = window.location.search;
+    const params = this.currentHref;
+    log('handleAuthCallback > params', { params });
+
     if (params.includes('code=') && params.includes('state=')) {
+      log('handleAuthCallback > handling auth0 callback .... ');
       let targetRoute: string; // Path to redirect to after login processsed
       const authComplete$ = this.handleRedirectCallback$.pipe(
         // Have client, now call method to handle auth callback redirect
         tap((cbRes: any) => {
+          log('handleAuthCallback > this.handleRedirectCallback$ > tap ', { cbRes });
           // Get and set target redirect route from callback results
           targetRoute =
             cbRes.appState && cbRes.appState.target

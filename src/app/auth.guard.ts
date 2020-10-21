@@ -1,3 +1,9 @@
+/**
+ * updated: 2020-10-21
+ * v0.0.1
+ * 
+ */
+
 import { Injectable } from '@angular/core';
 import { ActivatedRouteSnapshot, RouterStateSnapshot, UrlTree, CanActivate } from '@angular/router';
 import { Observable } from 'rxjs';

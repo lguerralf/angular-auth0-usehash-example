@@ -1,9 +1,15 @@
+/**
+ * updated: 2020-10-21
+ * v0.0.1
+ * 
+ */
+
 import { Injectable } from '@angular/core';
 import { AuthService } from './auth.service';
 
 function log(text, value: any = '') {
   console.log(
-    `(authservice) ${text} > `,
+    `(lfHeaderservice) ${text} > `,
     value ? JSON.stringify({ value }) : null
   );
 }
