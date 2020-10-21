@@ -1,5 +1,9 @@
 <button (click)="pingApi()">Ping API</button>
 
 <pre *ngIf="responseJson">
-<code>{{ responseJson | json }}</code>
+  <code>{{ responseJson | json }}</code>
+</pre>
+
+<pre class="pre">
+  * Please , Open developer tools >> Network tab , and review the request's headers 
 </pre>

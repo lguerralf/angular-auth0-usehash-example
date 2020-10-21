@@ -1,3 +1,4 @@
+import { Router } from '@angular/router';
 import { Component, OnInit } from '@angular/core';
 import { AuthService } from '../auth.service';
 
@@ -7,7 +8,12 @@ import { AuthService } from '../auth.service';
   styleUrls: ['./nav-bar.component.scss'],
 })
 export class NavBarComponent implements OnInit {
-  constructor(public auth: AuthService) {}
+  constructor(public auth: AuthService, private router: Router) {}
 
-  ngOnInit(): void {}
+  ngOnInit(): void { }
+
+  loginAndBackToPreviousPage() {
+    const redirectPath = this.router.url;
+    this.auth.login(redirectPath);
+  }
 }

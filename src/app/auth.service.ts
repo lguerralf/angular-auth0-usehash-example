@@ -1,7 +1,7 @@
 /**
  * updated: 2020-10-21
- * v0.0.1
- * 
+ * v0.0.2
+ *
  */
 
 import { Injectable } from '@angular/core';
@@ -17,24 +17,15 @@ import {
 } from 'rxjs';
 import { tap, catchError, concatMap, shareReplay } from 'rxjs/operators';
 import { Router } from '@angular/router';
-
-function log(text, value: any = '') {
-  console.log(
-    `(authservice) ${text} > `,
-    value ? JSON.stringify({ value }) : null
-  );
-}
+import * as querystring from 'query-string';
 
 @Injectable({
   providedIn: 'root',
 })
 export class AuthService {
   auth0Options = {
-    // domain: 'lguerra.auth0.com', // e.g linuxfoundation-dev.auth0.com
-    // clientId: 'OQYMnAZYjIsIKtQbOsg2Ng5kbk70aN3H',
     domain: 'linuxfoundation-dev.auth0.com', // e.g linuxfoundation-dev.auth0.com
     clientId: 'O8sQ4Jbr3At8buVR3IkrTRlejPZFWenI',
-    redirectUri: `${window.location.origin}`, // *info from allowed_logout_urls
   };
 
   currentHref = window.location.href;
@@ -45,9 +36,6 @@ export class AuthService {
     createAuth0Client({
       domain: this.auth0Options.domain,
       client_id: this.auth0Options.clientId,
-      redirect_uri: this.auth0Options.redirectUri,
-      cacheLocation: 'memory',
-      useRefreshTokens: true,
     })
   ) as Observable<Auth0Client>).pipe(
     shareReplay(1), // Every subscription receives the same shared value
@@ -63,20 +51,12 @@ export class AuthService {
   isAuthenticated$ = this.auth0Client$.pipe(
     concatMap((client: Auth0Client) => from(client.isAuthenticated())),
     tap((res: any) => {
-      tap(() => {
-        log('this.auth0Client$.pipe > concatMap > tap', { res });
-      }),
-        // *info: once isAuthenticated$ responses , SSO sessiong is loaded
-        this.loading$.next(false);
+      // *info: once isAuthenticated$ responses , SSO sessiong is loaded
+      this.loading$.next(false);
       this.loggedIn = res;
     })
   );
   handleRedirectCallback$ = this.auth0Client$.pipe(
-    tap(() => {
-      // *info: We need to use the URL with code and state store in the service because
-      // the URL will be cleaned with the Navigation Start Event (angular booststrap)
-      log('this.auth0Client$ > this.currentHref', { currentHref: this.currentHref });
-    }),
     concatMap((client: Auth0Client) =>
       from(client.handleRedirectCallback(this.currentHref))
     )
@@ -91,14 +71,11 @@ export class AuthService {
     // On initial load, check authentication state with authorization server
     // Set up local auth streams if user is already authenticated
     const params = this.currentHref;
-    log('handleAuthCallback > params', { params });
-
     if (params.includes('code=') && params.includes('state=')) {
       this.handleAuthCallback();
-    } else { 
+    } else {
       this.localAuthSetup();
     }
-    // Handle redirect from Auth0 login
   }
 
   // When calling, options can be passed if desired
@@ -117,9 +94,6 @@ export class AuthService {
     // Set up local authentication streams
     const checkAuth$ = this.isAuthenticated$.pipe(
       concatMap((loggedIn: boolean) => {
-        log('localAuthSetup > his.isAuthenticated$.pipe  > concatMap', {
-          loggedIn,
-        });
         if (loggedIn) {
           // If authenticated, get user and set in app
           // NOTE: you could pass options here if needed
@@ -127,9 +101,7 @@ export class AuthService {
         }
         this.auth0Client$
           .pipe(concatMap((client: Auth0Client) => from(client.checkSession())))
-          .subscribe((data) => {
-            log('localAuthSetup > checkSession >  data', { data });
-          });
+          .subscribe((data) => {});
         // If not authenticated, return stream that emits 'false'
         return of(loggedIn);
       })
@@ -150,24 +122,40 @@ export class AuthService {
     });
   }
 
+  private getTargetRouteFromAppState(appState) {
+    if (!appState) {
+      return '/';
+    }
+
+    const { returnTo, target, targetUrl } = appState;
+
+    return (
+      this.getTargetRouteFromReturnTo(returnTo) || target || targetUrl || '/'
+    );
+  }
+
+  private getTargetRouteFromReturnTo(returnTo) {
+    if (!returnTo) {
+      return '';
+    }
+
+    const { fragmentIdentifier } = querystring.parseUrl(returnTo, {
+      parseFragmentIdentifier: true,
+    });
+
+    return fragmentIdentifier;
+  }
+
   private handleAuthCallback() {
-    log('handleAuthCallback > ');
     // Call when app reloads after user logs in with Auth0
     const params = this.currentHref;
-    log('handleAuthCallback > params', { params });
 
     if (params.includes('code=') && params.includes('state=')) {
-      log('handleAuthCallback > handling auth0 callback .... ');
       let targetRoute: string; // Path to redirect to after login processsed
       const authComplete$ = this.handleRedirectCallback$.pipe(
         // Have client, now call method to handle auth callback redirect
         tap((cbRes: any) => {
-          log('handleAuthCallback > this.handleRedirectCallback$ > tap ', { cbRes });
-          // Get and set target redirect route from callback results
-          targetRoute =
-            cbRes.appState && cbRes.appState.target
-              ? cbRes.appState.target
-              : '/';
+          targetRoute = this.getTargetRouteFromAppState(cbRes.appState);
         }),
         concatMap(() => {
           // Redirect callback complete; get user and login status
@@ -184,14 +172,20 @@ export class AuthService {
   }
 
   logout() {
-    // Ensure Auth0 client instance exists
-    this.auth0Client$.subscribe((client: Auth0Client) => {
-      // Call method to log out
-      client.logout({
-        client_id: this.auth0Options.clientId,
-        returnTo: this.auth0Options.redirectUri,
-      });
+    const { query, fragmentIdentifier } = querystring.parseUrl(window.location.href, { parseFragmentIdentifier: true });
+
+    const searchPart = querystring.stringify({
+      ...query,
+      returnTo: window.location.href,
     });
+    const fragmentPart = fragmentIdentifier ? `#/${fragmentIdentifier}` : '';
+
+    const request = {
+      client_id: this.auth0Options.clientId,
+      returnTo: `${window.location.origin}?${searchPart}${fragmentPart}`,
+    };
+    // Ensure Auth0 client instance exists
+    this.auth0Client$.subscribe((client: Auth0Client) => client.logout(request));
   }
 
   getTokenSilently$(options?): Observable<any> {
@@ -206,7 +200,7 @@ export class AuthService {
       concatMap((client: Auth0Client) =>
         from(client.getIdTokenClaims(options))
       ),
-      concatMap((claims: any) => of(claims && claims.__raw || '')),
+      concatMap((claims: any) => of((claims && claims.__raw) || '')),
       catchError(() => of(''))
     );
   }
