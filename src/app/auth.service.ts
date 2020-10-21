@@ -1,6 +1,6 @@
 /**
  * updated: 2020-10-21
- * v0.0.2
+ * v0.0.3
  *
  */
 
@@ -18,6 +18,7 @@ import {
 import { tap, catchError, concatMap, shareReplay } from 'rxjs/operators';
 import { Router } from '@angular/router';
 import * as querystring from 'query-string';
+import Url from 'url-parse';
 
 @Injectable({
   providedIn: 'root',
@@ -76,6 +77,22 @@ export class AuthService {
     } else {
       this.localAuthSetup();
     }
+    this.handlerReturnToAferlogout();
+  }
+
+  handlerReturnToAferlogout() {
+    console.log(' handlerReturnToAferlogout > ', this.currentHref);
+    const { query } = querystring.parseUrl(this.currentHref);
+    console.log('query ? ', { query });
+
+    const returnTo = query.returnTo;
+
+    console.log(' returnTo ? ', { returnTo });
+
+    if (returnTo) {
+      const target = this.getTargetRouteFromReturnTo(returnTo);
+      this.router.navigate([target]);
+    }
   }
 
   // When calling, options can be passed if desired
@@ -116,7 +133,7 @@ export class AuthService {
     this.auth0Client$.subscribe((client: Auth0Client) => {
       // Call method to log in
       client.loginWithRedirect({
-        redirect_uri: `${window.location.origin}`,
+        redirect_uri: `${window.location.origin}${window.location.search}`,
         appState: { target: redirectPath },
       });
     });
@@ -143,7 +160,12 @@ export class AuthService {
       parseFragmentIdentifier: true,
     });
 
-    return fragmentIdentifier;
+    if (fragmentIdentifier) {
+      return fragmentIdentifier;
+    }
+
+    const { pathname } = new Url(returnTo);
+    return pathname || '/';
   }
 
   private handleAuthCallback() {
@@ -165,27 +187,43 @@ export class AuthService {
       // Subscribe to authentication completion observable
       // Response will be an array of user and login status
       authComplete$.subscribe(() => {
+        console.log('navigating too', {
+          current: this.currentHref,
+          targetRoute,
+          href: window.location.href,
+        });
         // Redirect to target route after callback processing
+        // *info: this url change will remove the code and state from the URL
+        // * this is need to avoid invalid state in the next refresh
         this.router.navigate([targetRoute]);
       });
     }
   }
 
   logout() {
-    const { query, fragmentIdentifier } = querystring.parseUrl(window.location.href, { parseFragmentIdentifier: true });
+    const { query, fragmentIdentifier } = querystring.parseUrl(
+      window.location.href,
+      { parseFragmentIdentifier: true }
+    );
 
-    const searchPart = querystring.stringify({
+    const qs = {
       ...query,
       returnTo: window.location.href,
-    });
-    const fragmentPart = fragmentIdentifier ? `#/${fragmentIdentifier}` : '';
+    };
+
+    const searchStr = querystring.stringify(qs);
+    const searchPart = searchStr ? `?${searchStr}` : '';
+
+    const fragmentPart = fragmentIdentifier ? `#${fragmentIdentifier}` : '';
 
     const request = {
       client_id: this.auth0Options.clientId,
-      returnTo: `${window.location.origin}?${searchPart}${fragmentPart}`,
+      returnTo: `${window.location.origin}${searchPart}${fragmentPart}`,
     };
-    // Ensure Auth0 client instance exists
-    this.auth0Client$.subscribe((client: Auth0Client) => client.logout(request));
+
+    this.auth0Client$.subscribe((client: Auth0Client) =>
+      client.logout(request)
+    );
   }
 
   getTokenSilently$(options?): Observable<any> {
