@@ -183,6 +183,7 @@ export class AuthService {
 
   getIdToken$(options?): Observable<any> {
     return this.auth0Client$.pipe(
+      // *info: if getIdToken fails , just return empty in the catchError
       concatMap((client: Auth0Client) =>
         from(client.getIdTokenClaims(options))
       ),
