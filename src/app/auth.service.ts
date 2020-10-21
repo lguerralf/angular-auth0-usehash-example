@@ -1,12 +1,22 @@
 import { Injectable } from '@angular/core';
 import createAuth0Client from '@auth0/auth0-spa-js';
 import Auth0Client from '@auth0/auth0-spa-js/dist/typings/Auth0Client';
-import { from, of, Observable, BehaviorSubject, combineLatest, throwError } from 'rxjs';
+import {
+  from,
+  of,
+  Observable,
+  BehaviorSubject,
+  combineLatest,
+  throwError,
+} from 'rxjs';
 import { tap, catchError, concatMap, shareReplay } from 'rxjs/operators';
 import { Router } from '@angular/router';
 
 function log(text, value: any = '') {
-  console.log(`(authservice) ${text} > `, value ? JSON.stringify({ value }) : null);
+  console.log(
+    `(authservice) ${text} > `,
+    value ? JSON.stringify({ value }) : null
+  );
 }
 
 @Injectable({
@@ -45,10 +55,11 @@ export class AuthService {
   isAuthenticated$ = this.auth0Client$.pipe(
     concatMap((client: Auth0Client) => from(client.isAuthenticated())),
     tap((res: any) => {
-    tap(() =>{ log('this.auth0Client$.pipe > concatMap > tap', { res })}),
-
-      // *info: once isAuthenticated$ responses , SSO sessiong is loaded
-      this.loading$.next(false);
+      tap(() => {
+        log('this.auth0Client$.pipe > concatMap > tap', { res });
+      }),
+        // *info: once isAuthenticated$ responses , SSO sessiong is loaded
+        this.loading$.next(false);
       this.loggedIn = res;
     })
   );
@@ -56,9 +67,11 @@ export class AuthService {
     tap(() => {
       // *info: We need to use the URL with code and state store in the service because
       // the URL will be cleaned with the Navigation Start Event (angular booststrap)
-      log('this.currentHref', {currentHref : this.currentHref })
+      log('this.currentHref', { currentHref: this.currentHref });
     }),
-    concatMap((client: Auth0Client) => from(client.handleRedirectCallback(this.currentHref)))
+    concatMap((client: Auth0Client) =>
+      from(client.handleRedirectCallback(this.currentHref))
+    )
   );
   // Create subject and public observable of user profile data
   private userProfileSubject$ = new BehaviorSubject<any>(null);
@@ -90,16 +103,19 @@ export class AuthService {
     // Set up local authentication streams
     const checkAuth$ = this.isAuthenticated$.pipe(
       concatMap((loggedIn: boolean) => {
-        log('localAuthSetup > his.isAuthenticated$.pipe  > concatMap', { loggedIn });
+        log('localAuthSetup > his.isAuthenticated$.pipe  > concatMap', {
+          loggedIn,
+        });
         if (loggedIn) {
           // If authenticated, get user and set in app
           // NOTE: you could pass options here if needed
           return this.getUser$();
         }
-        this.auth0Client$.pipe(
-          concatMap((client: Auth0Client) => from(client.checkSession()))).subscribe((data) => {
-            log('localAuthSetup > checkSession >  data', { data})
-          })
+        this.auth0Client$
+          .pipe(concatMap((client: Auth0Client) => from(client.checkSession())))
+          .subscribe((data) => {
+            log('localAuthSetup > checkSession >  data', { data });
+          });
         // If not authenticated, return stream that emits 'false'
         return of(loggedIn);
       })
@@ -129,7 +145,10 @@ export class AuthService {
         // Have client, now call method to handle auth callback redirect
         tap((cbRes: any) => {
           // Get and set target redirect route from callback results
-          targetRoute = cbRes.appState && cbRes.appState.target ? cbRes.appState.target : '/';
+          targetRoute =
+            cbRes.appState && cbRes.appState.target
+              ? cbRes.appState.target
+              : '/';
         }),
         concatMap(() => {
           // Redirect callback complete; get user and login status
@@ -157,13 +176,18 @@ export class AuthService {
   }
 
   getTokenSilently$(options?): Observable<any> {
-    return this.auth0Client$.pipe(concatMap((client: Auth0Client) => from(client.getTokenSilently(options))));
+    return this.auth0Client$.pipe(
+      concatMap((client: Auth0Client) => from(client.getTokenSilently(options)))
+    );
   }
 
   getIdToken$(options?): Observable<any> {
     return this.auth0Client$.pipe(
-      concatMap((client: Auth0Client) => from(client.getIdTokenClaims(options))),
-      concatMap((claims: any) => of(claims.__raw))
+      concatMap((client: Auth0Client) =>
+        from(client.getIdTokenClaims(options))
+      ),
+      concatMap((claims: any) => of(claims && claims.__raw || '')),
+      catchError(() => of(''))
     );
   }
 }

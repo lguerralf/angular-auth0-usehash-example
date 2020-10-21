@@ -15,7 +15,7 @@ const routes: Routes = [
   {
     path: 'external-api',
     component: ExternalApiComponent,
-    canActivate: [AuthGuard],
+    // canActivate: [AuthGuard],
   },
 ];
 
