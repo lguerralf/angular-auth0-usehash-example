@@ -7,6 +7,7 @@ import { NavBarComponent } from './nav-bar/nav-bar.component';
 import { ProfileComponent } from './profile/profile.component';
 import { ExternalApiComponent } from './external-api/external-api.component';
 import { HttpClientModule } from '@angular/common/http';
+import { LfxHeaderService } from './lfx-header.service';
 
 @NgModule({
   declarations: [AppComponent, NavBarComponent, ProfileComponent, ExternalApiComponent],

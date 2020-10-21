@@ -24,8 +24,10 @@ function log(text, value: any = '') {
 })
 export class AuthService {
   auth0Options = {
-    domain: 'lguerra.auth0.com', // e.g linuxfoundation-dev.auth0.com
-    clientId: 'OQYMnAZYjIsIKtQbOsg2Ng5kbk70aN3H',
+    // domain: 'lguerra.auth0.com', // e.g linuxfoundation-dev.auth0.com
+    // clientId: 'OQYMnAZYjIsIKtQbOsg2Ng5kbk70aN3H',
+    domain: 'linuxfoundation-dev.auth0.com', // e.g linuxfoundation-dev.auth0.com
+    clientId: 'O8sQ4Jbr3At8buVR3IkrTRlejPZFWenI',
     redirectUri: `${window.location.origin}`, // *info from allowed_logout_urls
   };
 
