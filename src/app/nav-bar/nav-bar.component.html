@@ -1,0 +1,11 @@
+<div *ngIf="auth.loading$ | async">
+  loading ...
+</div>
+<header>
+  <button (click)="auth.login()" *ngIf="!auth.loggedIn">Log In</button>
+  <button (click)="auth.logout()" *ngIf="auth.loggedIn">Log Out</button>
+  <hr />
+  <a routerLink="/">Home</a>&nbsp;
+  <a routerLink="profile" *ngIf="auth.loggedIn">Profile</a>
+  &nbsp;<a routerLink="external-api" *ngIf="auth.loggedIn">External API</a>
+</header>
