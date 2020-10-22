@@ -1,6 +1,6 @@
 /**
- * updated: 2020-10-21
- * v0.0.3
+ * updated: 2020-10-22
+ * v0.0.4
  *
  */
 
@@ -76,8 +76,8 @@ export class AuthService {
       this.handleAuthCallback();
     } else {
       this.localAuthSetup();
+      this.handlerReturnToAferlogout();
     }
-    this.handlerReturnToAferlogout();
   }
 
   handlerReturnToAferlogout() {
