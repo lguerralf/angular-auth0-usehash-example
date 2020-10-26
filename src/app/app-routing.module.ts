@@ -5,6 +5,7 @@ import { AuthGuard } from './auth.guard';
 import { HTTP_INTERCEPTORS } from '@angular/common/http';
 import { InterceptorService } from './interceptor.service';
 import { ExternalApiComponent } from './external-api/external-api.component';
+import { AuthCallbackComponent } from './authCallback/authCallback.componen';
 
 const routes: Routes = [
   {
@@ -15,12 +16,15 @@ const routes: Routes = [
   {
     path: 'external-api',
     component: ExternalApiComponent,
-    // canActivate: [AuthGuard],
+  },
+  {
+    path: 'auth',
+    component: AuthCallbackComponent,
   },
 ];
 
 @NgModule({
-  imports: [RouterModule.forRoot(routes, { useHash: true })],
+  imports: [RouterModule.forRoot(routes, { useHash: false })],
   exports: [RouterModule],
   providers: [
     {

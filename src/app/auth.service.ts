@@ -1,6 +1,6 @@
 /**
- * updated: 2020-10-22
- * v0.0.4
+ * updated: 2020-10-26
+ * v0.0.5
  *
  */
 
@@ -25,8 +25,10 @@ import Url from 'url-parse';
 })
 export class AuthService {
   auth0Options = {
-    domain: 'linuxfoundation-dev.auth0.com', // e.g linuxfoundation-dev.auth0.com
+    domain: 'linuxfoundation-dev.auth0.com',
     clientId: 'O8sQ4Jbr3At8buVR3IkrTRlejPZFWenI',
+    callbackUrl: window.location.origin,
+    logoutUrl: window.location.origin
   };
 
   currentHref = window.location.href;
@@ -37,6 +39,7 @@ export class AuthService {
     createAuth0Client({
       domain: this.auth0Options.domain,
       client_id: this.auth0Options.clientId,
+      redirect_uri: this.auth0Options.callbackUrl
     })
   ) as Observable<Auth0Client>).pipe(
     shareReplay(1), // Every subscription receives the same shared value
@@ -81,13 +84,8 @@ export class AuthService {
   }
 
   handlerReturnToAferlogout() {
-    console.log(' handlerReturnToAferlogout > ', this.currentHref);
-    const { query } = querystring.parseUrl(this.currentHref);
-    console.log('query ? ', { query });
-
-    const returnTo = query.returnTo;
-
-    console.log(' returnTo ? ', { returnTo });
+    const { query } = querystring.parseUrl(this.currentHref) || {};
+    const { returnTo } = query || {};
 
     if (returnTo) {
       const target = this.getTargetRouteFromReturnTo(returnTo);
@@ -126,19 +124,6 @@ export class AuthService {
     checkAuth$.subscribe();
   }
 
-  login(redirectPath: string = '/') {
-    // A desired redirect path can be passed to login method
-    // (e.g., from a route guard)
-    // Ensure Auth0 client instance exists
-    this.auth0Client$.subscribe((client: Auth0Client) => {
-      // Call method to log in
-      client.loginWithRedirect({
-        redirect_uri: `${window.location.origin}${window.location.search}`,
-        appState: { target: redirectPath },
-      });
-    });
-  }
-
   private getTargetRouteFromAppState(appState) {
     if (!appState) {
       return '/';
@@ -173,7 +158,7 @@ export class AuthService {
     const params = this.currentHref;
 
     if (params.includes('code=') && params.includes('state=')) {
-      let targetRoute: string; // Path to redirect to after login processsed
+      let targetRoute = '/'; // Path to redirect to after login processsed
       const authComplete$ = this.handleRedirectCallback$.pipe(
         // Have client, now call method to handle auth callback redirect
         tap((cbRes: any) => {
@@ -187,17 +172,26 @@ export class AuthService {
       // Subscribe to authentication completion observable
       // Response will be an array of user and login status
       authComplete$.subscribe(() => {
-        console.log('navigating too', {
-          current: this.currentHref,
-          targetRoute,
-          href: window.location.href,
-        });
         // Redirect to target route after callback processing
         // *info: this url change will remove the code and state from the URL
         // * this is need to avoid invalid state in the next refresh
         this.router.navigate([targetRoute]);
       });
     }
+  }
+
+  login(redirectPath: string = '/') {
+    // A desired redirect path can be passed to login method
+    // (e.g., from a route guard)
+    // Ensure Auth0 client instance exists
+    const redirectUri = `${this.auth0Options.callbackUrl}${window.location.search}`;
+    this.auth0Client$.subscribe((client: Auth0Client) => {
+      // Call method to log in
+      client.loginWithRedirect({
+        redirect_uri: redirectUri,
+        appState: { target: redirectPath },
+      });
+    });
   }
 
   logout() {
@@ -216,9 +210,11 @@ export class AuthService {
 
     const fragmentPart = fragmentIdentifier ? `#${fragmentIdentifier}` : '';
 
+    const logoutUrl = this.auth0Options.logoutUrl;
+
     const request = {
       client_id: this.auth0Options.clientId,
-      returnTo: `${window.location.origin}${searchPart}${fragmentPart}`,
+      returnTo: `${logoutUrl}${searchPart}${fragmentPart}`,
     };
 
     this.auth0Client$.subscribe((client: Auth0Client) =>
