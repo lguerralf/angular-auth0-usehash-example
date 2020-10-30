@@ -132,14 +132,12 @@ export class AuthService {
             concatMap((client: Auth0Client) => from(client.getTokenSilently())),
             concatMap(() => this.getUser$()),
             concatMap((user) => {
-              console.log(' user ? ', { user });
               if (user) {
                 return this.isAuthenticated$;
               }
               return of(null);
             }),
             catchError((error) => {
-              console.log('getTokenSilently > getUser$ ', { error });
               // *info: by pass error, no needed, it is login_required
               return of(null);
             })
