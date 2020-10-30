@@ -11,6 +11,7 @@ import { AuthService } from './auth.service';
 function setScript() {
   const script = document.createElement('script');
   script.setAttribute('src','https://cdn.dev.platform.linuxfoundation.org' + '/lfx-header.js');
+  // script.setAttribute('src','http://127.0.0.1:8080' + '/lfx-header.js');
   script.setAttribute('async', 'true');
   document.head.appendChild(script);
 }

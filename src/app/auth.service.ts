@@ -1,6 +1,6 @@
 /**
- * updated: 2020-10-26
- * v0.0.5
+ * updated: 2020-10-30
+ * v0.0.6
  *
  */
 
@@ -28,7 +28,8 @@ export class AuthService {
     domain: 'linuxfoundation-dev.auth0.com',
     clientId: 'O8sQ4Jbr3At8buVR3IkrTRlejPZFWenI',
     callbackUrl: window.location.origin,
-    logoutUrl: window.location.origin
+    logoutUrl: window.location.origin,
+    useRefreshTokens: true,
   };
 
   currentHref = window.location.href;
@@ -39,7 +40,10 @@ export class AuthService {
     createAuth0Client({
       domain: this.auth0Options.domain,
       client_id: this.auth0Options.clientId,
-      redirect_uri: this.auth0Options.callbackUrl
+      redirect_uri: this.auth0Options.callbackUrl,
+      // https://auth0.com/docs/libraries/auth0-single-page-app-sdk#get-access-token-with-no-interaction
+      useRefreshTokens: this.auth0Options.useRefreshTokens,
+      // *info make sure of using userefreshtoken="true" in  <lfx-header> element
     })
   ) as Observable<Auth0Client>).pipe(
     shareReplay(1), // Every subscription receives the same shared value
@@ -56,7 +60,7 @@ export class AuthService {
     concatMap((client: Auth0Client) => from(client.isAuthenticated())),
     tap((res: any) => {
       // *info: once isAuthenticated$ responses , SSO sessiong is loaded
-      this.loading$.next(false);
+      // this.loading$.next(false);
       this.loggedIn = res;
     })
   );
@@ -104,6 +108,12 @@ export class AuthService {
     );
   }
 
+  checkSession() {
+    return this.auth0Client$.pipe(
+      concatMap((client: Auth0Client) => from(client.checkSession()))
+    );
+  }
+
   private localAuthSetup() {
     // This should only be called on app initialization
     // Set up local authentication streams
@@ -112,11 +122,31 @@ export class AuthService {
         if (loggedIn) {
           // If authenticated, get user and set in app
           // NOTE: you could pass options here if needed
+          this.loading$.next(false);
           return this.getUser$();
         }
         this.auth0Client$
-          .pipe(concatMap((client: Auth0Client) => from(client.checkSession())))
-          .subscribe((data) => {});
+          .pipe(
+            // https://auth0.com/docs/libraries/auth0-single-page-app-sdk#get-access-token-with-no-interaction
+            // *info: Allow check user session in public pages to avoid redirecting to login page
+            concatMap((client: Auth0Client) => from(client.getTokenSilently())),
+            concatMap(() => this.getUser$()),
+            concatMap((user) => {
+              console.log(' user ? ', { user });
+              if (user) {
+                return this.isAuthenticated$;
+              }
+              return of(null);
+            }),
+            catchError((error) => {
+              console.log('getTokenSilently > getUser$ ', { error });
+              // *info: by pass error, no needed, it is login_required
+              return of(null);
+            })
+          )
+          .subscribe(() => {
+            this.loading$.next(false);
+           });
         // If not authenticated, return stream that emits 'false'
         return of(loggedIn);
       })
@@ -175,6 +205,7 @@ export class AuthService {
         // Redirect to target route after callback processing
         // *info: this url change will remove the code and state from the URL
         // * this is need to avoid invalid state in the next refresh
+        this.loading$.next(false);
         this.router.navigate([targetRoute]);
       });
     }
