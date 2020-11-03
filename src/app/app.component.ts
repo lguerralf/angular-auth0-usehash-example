@@ -22,9 +22,6 @@ export class AppComponent {
   }
 
   checkSession() {
-    this.auth.checkSession().subscribe((data) => {
-      console.log('checkSession > data ', { data });
-    })
   }
   getUser() {
     this.auth.getUser$().subscribe((data) => {

@@ -1,12 +1,15 @@
 /**
- * updated: 2020-10-30
- * v0.0.6
+ * updated: 2020-11-02
+ * v0.0.7
  *
+ * Last Update:
+ *  Using auth0 from CDN instead of npm module
+ *  please review index.html
  */
 
+declare let window;
+
 import { Injectable } from '@angular/core';
-import createAuth0Client from '@auth0/auth0-spa-js';
-import Auth0Client from '@auth0/auth0-spa-js/dist/typings/Auth0Client';
 import {
   from,
   of,
@@ -29,6 +32,9 @@ export class AuthService {
     clientId: 'O8sQ4Jbr3At8buVR3IkrTRlejPZFWenI',
     callbackUrl: window.location.origin,
     logoutUrl: window.location.origin,
+    // https://auth0.com/docs/libraries/auth0-single-page-app-sdk#get-access-token-with-no-interaction
+    // If you active useRefreshTokens: true , please update lfx-header directly too in index.html
+     // *info make sure of using `userefreshtoken="true"` in  <lfx-header> element
     useRefreshTokens: true,
   };
 
@@ -37,15 +43,13 @@ export class AuthService {
   loading$ = new BehaviorSubject<any>(true);
   // Create an observable of Auth0 instance of client
   auth0Client$ = (from(
-    createAuth0Client({
+    window.createAuth0Client({
       domain: this.auth0Options.domain,
       client_id: this.auth0Options.clientId,
       redirect_uri: this.auth0Options.callbackUrl,
-      // https://auth0.com/docs/libraries/auth0-single-page-app-sdk#get-access-token-with-no-interaction
-      useRefreshTokens: this.auth0Options.useRefreshTokens,
-      // *info make sure of using userefreshtoken="true" in  <lfx-header> element
+      useRefreshTokens: this.auth0Options.useRefreshTokens
     })
-  ) as Observable<Auth0Client>).pipe(
+  ) as Observable<any>).pipe(
     shareReplay(1), // Every subscription receives the same shared value
     catchError((err) => {
       this.loading$.next(false);
@@ -57,7 +61,7 @@ export class AuthService {
   // concatMap: Using the client instance, call SDK method; SDK returns a promise
   // from: Convert that resulting promise into an observable
   isAuthenticated$ = this.auth0Client$.pipe(
-    concatMap((client: Auth0Client) => from(client.isAuthenticated())),
+    concatMap((client: any) => from(client.isAuthenticated())),
     tap((res: any) => {
       // *info: once isAuthenticated$ responses , SSO sessiong is loaded
       // this.loading$.next(false);
@@ -65,7 +69,7 @@ export class AuthService {
     })
   );
   handleRedirectCallback$ = this.auth0Client$.pipe(
-    concatMap((client: Auth0Client) =>
+    concatMap((client: any) =>
       from(client.handleRedirectCallback(this.currentHref))
     )
   );
@@ -101,18 +105,13 @@ export class AuthService {
   // https://auth0.github.io/auth0-spa-js/classes/auth0client.html#getuser
   getUser$(options?): Observable<any> {
     return this.auth0Client$.pipe(
-      concatMap((client: Auth0Client) => from(client.getUser(options))),
+      concatMap((client: any) => from(client.getUser(options))),
       tap((user) => {
         this.userProfileSubject$.next(user);
       })
     );
   }
 
-  checkSession() {
-    return this.auth0Client$.pipe(
-      concatMap((client: Auth0Client) => from(client.checkSession()))
-    );
-  }
 
   private localAuthSetup() {
     // This should only be called on app initialization
@@ -129,7 +128,7 @@ export class AuthService {
           .pipe(
             // https://auth0.com/docs/libraries/auth0-single-page-app-sdk#get-access-token-with-no-interaction
             // *info: Allow check user session in public pages to avoid redirecting to login page
-            concatMap((client: Auth0Client) => from(client.getTokenSilently())),
+            concatMap((client: any) => from(client.getTokenSilently())),
             concatMap(() => this.getUser$()),
             concatMap((user) => {
               if (user) {
@@ -214,7 +213,7 @@ export class AuthService {
     // (e.g., from a route guard)
     // Ensure Auth0 client instance exists
     const redirectUri = `${this.auth0Options.callbackUrl}${window.location.search}`;
-    this.auth0Client$.subscribe((client: Auth0Client) => {
+    this.auth0Client$.subscribe((client: any) => {
       // Call method to log in
       client.loginWithRedirect({
         redirect_uri: redirectUri,
@@ -246,21 +245,21 @@ export class AuthService {
       returnTo: `${logoutUrl}${searchPart}${fragmentPart}`,
     };
 
-    this.auth0Client$.subscribe((client: Auth0Client) =>
+    this.auth0Client$.subscribe((client: any) =>
       client.logout(request)
     );
   }
 
   getTokenSilently$(options?): Observable<any> {
     return this.auth0Client$.pipe(
-      concatMap((client: Auth0Client) => from(client.getTokenSilently(options)))
+      concatMap((client: any) => from(client.getTokenSilently(options)))
     );
   }
 
   getIdToken$(options?): Observable<any> {
     return this.auth0Client$.pipe(
       // *info: if getIdToken fails , just return empty in the catchError
-      concatMap((client: Auth0Client) =>
+      concatMap((client: any) =>
         from(client.getIdTokenClaims(options))
       ),
       concatMap((claims: any) => of((claims && claims.__raw) || '')),
