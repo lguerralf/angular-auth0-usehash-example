@@ -1,0 +1,29 @@
+
+<!--  -->
+<hr>
+<pre class="pre">
+  This is your Angular app --- v2
+  <br>
+  * Please confirm you are logged in in lfx-header and your app at the same time by click on Profile link
+</pre>
+<pre class="pre">
+  * There is posible you are Logged In in LFX-Header but in your app the user is still anonymous.
+  * If this the case , the auth0 implementation in the app is wrong.
+</pre>
+
+<pre class="pre">
+  * Logout Action will return you to the previous page.
+  * If this page is a private , will redirect you to SSO login page.
+</pre>
+
+<pre class="pre">
+  * have in mind that Loading the current User sesssion can take some seconds
+</pre>
+
+<button (click)="requesttoken()"> Get token</button>
+<button (click)="checkSession()"> Check session </button>
+<button (click)="getUser()"> get user </button>
+
+
+<app-navbar></app-navbar>
+<router-outlet></router-outlet>
