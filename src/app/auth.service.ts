@@ -1,8 +1,15 @@
 /**
- * updated: 2020-11-02
- * v0.0.7
+ * updated: 2020-11-04 v0.0.8
+ * 
  *
- * Last Update:
+ * v0.0.8 Force login on public pages if cookie exists
+ *  - refactor login()
+ *  - refactor construct()
+ *  - refactor localAuthSetup()
+ *  - added initializeApplication()
+ *  - added checkUserSessionByCookie()
+ * 
+ * v0.0.7 Last Update:
  *  Using auth0 from CDN instead of npm module
  *  please review index.html
  */
@@ -23,6 +30,10 @@ import { Router } from '@angular/router';
 import * as querystring from 'query-string';
 import Url from 'url-parse';
 
+function log(text: any, value: any = {}) {
+  console.log(`> ${text}`, JSON.stringify(value, null, 2));
+}
+
 @Injectable({
   providedIn: 'root',
 })
@@ -34,7 +45,7 @@ export class AuthService {
     logoutUrl: window.location.origin,
     // https://auth0.com/docs/libraries/auth0-single-page-app-sdk#get-access-token-with-no-interaction
     // If you active useRefreshTokens: true , please update lfx-header directly too in index.html
-     // *info make sure of using `userefreshtoken="true"` in  <lfx-header> element
+    // *info make sure of using `userefreshtoken="true"` in  <lfx-header> element
     useRefreshTokens: true,
   };
 
@@ -47,7 +58,7 @@ export class AuthService {
       domain: this.auth0Options.domain,
       client_id: this.auth0Options.clientId,
       redirect_uri: this.auth0Options.callbackUrl,
-      useRefreshTokens: this.auth0Options.useRefreshTokens
+      useRefreshTokens: this.auth0Options.useRefreshTokens,
     })
   ) as Observable<any>).pipe(
     shareReplay(1), // Every subscription receives the same shared value
@@ -80,15 +91,20 @@ export class AuthService {
   loggedIn = false;
 
   constructor(private router: Router) {
+    this.initializeApplication();
+  }
+
+  async initializeApplication() {
     // On initial load, check authentication state with authorization server
     // Set up local auth streams if user is already authenticated
     const params = this.currentHref;
     if (params.includes('code=') && params.includes('state=')) {
       this.handleAuthCallback();
-    } else {
-      this.localAuthSetup();
-      this.handlerReturnToAferlogout();
+      return;
     }
+
+    await this.localAuthSetup();
+    this.handlerReturnToAferlogout();
   }
 
   handlerReturnToAferlogout() {
@@ -112,8 +128,13 @@ export class AuthService {
     );
   }
 
+  checkSession() {
+    return this.auth0Client$.pipe(
+      concatMap((client) => from(client.checkSession()))
+    );
+  }
 
-  private localAuthSetup() {
+  private async localAuthSetup() {
     // This should only be called on app initialization
     // Set up local authentication streams
     const checkAuth$ = this.isAuthenticated$.pipe(
@@ -138,17 +159,47 @@ export class AuthService {
             }),
             catchError((error) => {
               // *info: by pass error, no needed, it is login_required
+              this.checkUserSessionByCookie();
               return of(null);
             })
           )
           .subscribe(() => {
             this.loading$.next(false);
-           });
+          });
         // If not authenticated, return stream that emits 'false'
         return of(loggedIn);
       })
     );
     checkAuth$.subscribe();
+  }
+
+  checkUserSessionByCookie() {
+    const cookieName = `auth-${this.auth0Options.domain}`;
+    const cookieExists = this.getCookie(cookieName);
+    if (cookieExists) {
+      log('cookieExists > ', { cookieExists });
+      this.login();
+      return;
+    }
+
+    log('cookie dont exists ... ');
+  }
+
+  getCookie(cname) {
+    const name = cname + '=';
+    const decodedCookie = decodeURIComponent(document.cookie);
+    const ca = decodedCookie.split(';');
+
+    for (let i = 0; i < ca.length; i++) {
+      let c = ca[i];
+      while (c.charAt(0) == ' ') {
+        c = c.substring(1);
+      }
+      if (c.indexOf(name) == 0) {
+        return c.substring(name.length, c.length);
+      }
+    }
+    return '';
   }
 
   private getTargetRouteFromAppState(appState) {
@@ -189,7 +240,9 @@ export class AuthService {
       const authComplete$ = this.handleRedirectCallback$.pipe(
         // Have client, now call method to handle auth callback redirect
         tap((cbRes: any) => {
+          log('handleAuthCallback > cbres', { cbRes });
           targetRoute = this.getTargetRouteFromAppState(cbRes.appState);
+          log('handleAuthCallback > targetRoute ? ', { targetRoute });
         }),
         concatMap(() => {
           // Redirect callback complete; get user and login status
@@ -203,6 +256,7 @@ export class AuthService {
         // *info: this url change will remove the code and state from the URL
         // * this is need to avoid invalid state in the next refresh
         this.loading$.next(false);
+        log('authComplete$.subscribe > ', { targetRoute });
         this.router.navigate([targetRoute]);
       });
     }
@@ -215,10 +269,14 @@ export class AuthService {
     const redirectUri = `${this.auth0Options.callbackUrl}${window.location.search}`;
     this.auth0Client$.subscribe((client: any) => {
       // Call method to log in
-      client.loginWithRedirect({
+      const request = {
         redirect_uri: redirectUri,
-        appState: { target: redirectPath },
-      });
+        appState: { returnTo: this.currentHref },
+      };
+
+      log('request', { request });
+
+      client.loginWithRedirect(request);
     });
   }
 
@@ -245,9 +303,7 @@ export class AuthService {
       returnTo: `${logoutUrl}${searchPart}${fragmentPart}`,
     };
 
-    this.auth0Client$.subscribe((client: any) =>
-      client.logout(request)
-    );
+    this.auth0Client$.subscribe((client: any) => client.logout(request));
   }
 
   getTokenSilently$(options?): Observable<any> {
@@ -259,9 +315,7 @@ export class AuthService {
   getIdToken$(options?): Observable<any> {
     return this.auth0Client$.pipe(
       // *info: if getIdToken fails , just return empty in the catchError
-      concatMap((client: any) =>
-        from(client.getIdTokenClaims(options))
-      ),
+      concatMap((client: any) => from(client.getIdTokenClaims(options))),
       concatMap((claims: any) => of((claims && claims.__raw) || '')),
       catchError(() => of(''))
     );
