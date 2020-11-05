@@ -26,7 +26,7 @@ export class InfrastructureStack extends cdk.Stack {
     const siteBucket = new s3.Bucket(this, "SiteBucket", {
       bucketName: siteDomain,
       websiteIndexDocument: "index.html",
-      websiteErrorDocument: "error.html",
+      websiteErrorDocument: "index.html",
       publicReadAccess: true,
 
       // The default removal policy is RETAIN, which means that cdk destroy will not attempt to delete
@@ -44,6 +44,21 @@ export class InfrastructureStack extends cdk.Stack {
         sslMethod: cloudfront.SSLMethod.SNI,
         securityPolicy: cloudfront.SecurityPolicyProtocol.TLS_V1_1_2016,
       },
+      defaultRootObject: 'index.html',
+      errorConfigurations: [
+        {
+          errorCode: 403,
+          responseCode: 200,
+          errorCachingMinTtl: 1,
+          responsePagePath: '/index.html',
+        },
+        {
+          errorCode: 404,
+          responseCode: 200,
+          errorCachingMinTtl: 1,
+          responsePagePath: '/index.html',
+        }
+      ],
       originConfigs: [
         {
           s3OriginSource: {

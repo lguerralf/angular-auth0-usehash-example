@@ -610,7 +610,7 @@ class AuthService {
                     .pipe(
                 // https://auth0.com/docs/libraries/auth0-single-page-app-sdk#get-access-token-with-no-interaction
                 // *info: Allow check user session in public pages to avoid redirecting to login page
-                Object(rxjs_operators__WEBPACK_IMPORTED_MODULE_3__["concatMap"])((client) => Object(rxjs__WEBPACK_IMPORTED_MODULE_2__["from"])(client.getTokenSilently())), Object(rxjs_operators__WEBPACK_IMPORTED_MODULE_3__["concatMap"])(() => this.getUser$()), Object(rxjs_operators__WEBPACK_IMPORTED_MODULE_3__["concatMap"])((user) => {
+                Object(rxjs_operators__WEBPACK_IMPORTED_MODULE_3__["concatMap"])((client) => Object(rxjs__WEBPACK_IMPORTED_MODULE_2__["from"])(client.getTokenSilently({ ignoreCache: true }))), Object(rxjs_operators__WEBPACK_IMPORTED_MODULE_3__["concatMap"])(() => this.getUser$()), Object(rxjs_operators__WEBPACK_IMPORTED_MODULE_3__["concatMap"])((user) => {
                     if (user) {
                         return this.isAuthenticated$;
                     }
@@ -730,7 +730,7 @@ class AuthService {
         this.auth0Client$.subscribe((client) => client.logout(request));
     }
     getTokenSilently$(options) {
-        return this.auth0Client$.pipe(Object(rxjs_operators__WEBPACK_IMPORTED_MODULE_3__["concatMap"])((client) => Object(rxjs__WEBPACK_IMPORTED_MODULE_2__["from"])(client.getTokenSilently(options))));
+        return this.auth0Client$.pipe(Object(rxjs_operators__WEBPACK_IMPORTED_MODULE_3__["concatMap"])((client) => Object(rxjs__WEBPACK_IMPORTED_MODULE_2__["from"])(client.getTokenSilently({ ignoreCache: true }))));
     }
     getIdToken$(options) {
         return this.auth0Client$.pipe(

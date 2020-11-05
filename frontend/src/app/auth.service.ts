@@ -1,6 +1,8 @@
 /**
- * updated: 2020-11-04 v0.0.8
+ * updated: 2020-11-05 v0.0.9
  * 
+ * v0.0.9 force login if cookie exists
+ *  
  *
  * v0.0.8 Force login on public pages if cookie exists
  *  - refactor login()
@@ -57,7 +59,7 @@ export class AuthService {
     window.createAuth0Client({
       domain: this.auth0Options.domain,
       client_id: this.auth0Options.clientId,
-      redirect_uri: this.auth0Options.callbackUrl,
+      // redirect_uri: this.auth0Options.callbackUrl,
       useRefreshTokens: this.auth0Options.useRefreshTokens,
     })
   ) as Observable<any>).pipe(
@@ -149,12 +151,13 @@ export class AuthService {
           .pipe(
             // https://auth0.com/docs/libraries/auth0-single-page-app-sdk#get-access-token-with-no-interaction
             // *info: Allow check user session in public pages to avoid redirecting to login page
-            concatMap((client: any) => from(client.getTokenSilently())),
+            concatMap((client: any) => from(client.getTokenSilently({ ignoreCache: true }))),
             concatMap(() => this.getUser$()),
             concatMap((user) => {
               if (user) {
                 return this.isAuthenticated$;
               }
+              this.checkUserSessionByCookie();
               return of(null);
             }),
             catchError((error) => {
@@ -308,7 +311,7 @@ export class AuthService {
 
   getTokenSilently$(options?): Observable<any> {
     return this.auth0Client$.pipe(
-      concatMap((client: any) => from(client.getTokenSilently(options)))
+      concatMap((client: any) => from(client.getTokenSilently({ ignoreCache: true })))
     );
   }
 
