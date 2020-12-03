@@ -54,6 +54,7 @@ export class AuthService {
     // If you active useRefreshTokens: true , please update lfx-header directly too in index.html
     // *info make sure of using `userefreshtoken="true"` in  <lfx-header> element
     useRefreshTokens: true,
+    useRequestId: true,
   };
 
   currentHref = window.location.href;
@@ -166,7 +167,9 @@ export class AuthService {
           .pipe(
             // https://auth0.com/docs/libraries/auth0-single-page-app-sdk#get-access-token-with-no-interaction
             // *info: Allow check user session in public pages to avoid redirecting to login page
-            concatMap((client: any) => from(client.getTokenSilently({ ignoreCache: true }))),
+            concatMap((client: any) =>
+              from(client.getTokenSilently({ ignoreCache: true }))
+            ),
             concatMap(() => this.getUser$()),
             concatMap((user) => {
               if (user) {
@@ -228,9 +231,13 @@ export class AuthService {
     const { requestId, returnTo, target, targetUrl } = appState;
 
     const requestIdURL = this.getURLFromRequestId(requestId);
-    
+
     return (
-      requestIdURL || this.getTargetRouteFromReturnTo(returnTo) || target || targetUrl || '/'
+      requestIdURL ||
+      this.getTargetRouteFromReturnTo(returnTo) ||
+      target ||
+      targetUrl ||
+      '/'
     );
   }
 
@@ -291,6 +298,12 @@ export class AuthService {
     }
   }
 
+  getRequestId(str: string) {
+    const requestId = `lfxheaderid-${new Date().getTime()}`;
+    window.localStorage.setItem(requestId, str);
+    return requestId;
+  }
+
   login(redirectPath: string = '/') {
     // A desired redirect path can be passed to login method
     // (e.g., from a route guard)
@@ -298,9 +311,23 @@ export class AuthService {
     const redirectUri = `${this.auth0Options.callbackUrl}${window.location.search}`;
     this.auth0Client$.subscribe((client: any) => {
       // Call method to log in
+
+      let returnTo = redirectPath;
+      let requestId = undefined;
+
+      if (this.auth0Options.useRequestId) {
+        requestId = this.getRequestId(returnTo);
+        returnTo = undefined;
+      }
+
+      const appState = {
+        returnTo,
+        requestId,
+      };
+
       const request = {
         redirect_uri: redirectUri,
-        appState: { returnTo: redirectPath },
+        appState,
       };
 
       log('request', { request });
@@ -337,7 +364,9 @@ export class AuthService {
 
   getTokenSilently$(options?): Observable<any> {
     return this.auth0Client$.pipe(
-      concatMap((client: any) => from(client.getTokenSilently({ ignoreCache: true })))
+      concatMap((client: any) =>
+        from(client.getTokenSilently({ ignoreCache: true }))
+      )
     );
   }
 
