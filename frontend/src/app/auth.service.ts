@@ -308,7 +308,7 @@ export class AuthService {
     // A desired redirect path can be passed to login method
     // (e.g., from a route guard)
     // Ensure Auth0 client instance exists
-    const redirectUri = `${this.auth0Options.callbackUrl}${window.location.search}`;
+    let redirectUri = `${this.auth0Options.callbackUrl}${window.location.search}`;
     this.auth0Client$.subscribe((client: any) => {
       // Call method to log in
 
@@ -316,6 +316,7 @@ export class AuthService {
       let requestId = undefined;
 
       if (this.auth0Options.useRequestId) {
+        redirectUri = this.auth0Options.callbackUrl;
         requestId = this.getRequestId(returnTo);
         returnTo = undefined;
       }
