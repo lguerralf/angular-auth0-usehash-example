@@ -1,8 +1,13 @@
 /**
+ *
+ * updates
+ * 2020-12-03: v0.0.10
+ * - use requestId instead of returnTo directly
+ *
  * updated: 2020-11-05 v0.0.9
- * 
+ *
  * v0.0.9 force login if cookie exists
- *  
+ *
  *
  * v0.0.8 Force login on public pages if cookie exists
  *  - refactor login()
@@ -10,7 +15,7 @@
  *  - refactor localAuthSetup()
  *  - added initializeApplication()
  *  - added checkUserSessionByCookie()
- * 
+ *
  * v0.0.7 Last Update:
  *  Using auth0 from CDN instead of npm module
  *  please review index.html
@@ -84,7 +89,11 @@ export class AuthService {
   handleRedirectCallback$ = this.auth0Client$.pipe(
     concatMap((client: any) =>
       from(client.handleRedirectCallback(this.currentHref))
-    )
+    ),
+    catchError(() => {
+      window.history.replaceState({}, document.title, '/');
+      return of(true);
+    })
   );
   // Create subject and public observable of user profile data
   private userProfileSubject$ = new BehaviorSubject<any>(null);
@@ -111,11 +120,17 @@ export class AuthService {
 
   handlerReturnToAferlogout() {
     const { query } = querystring.parseUrl(this.currentHref) || {};
-    const { returnTo } = query || {};
+    const { returnTo, requestId } = query || {};
+
+    const requestIdURL = this.getURLFromRequestId(requestId as string);
+    if (requestIdURL) {
+      this.router.navigateByUrl(requestIdURL);
+      return;
+    }
 
     if (returnTo) {
       const target = this.getTargetRouteFromReturnTo(returnTo);
-      this.router.navigate([target]);
+      this.router.navigateByUrl(target);
     }
   }
 
@@ -210,11 +225,23 @@ export class AuthService {
       return '/';
     }
 
-    const { returnTo, target, targetUrl } = appState;
+    const { requestId, returnTo, target, targetUrl } = appState;
 
+    const requestIdURL = this.getURLFromRequestId(requestId);
+    
     return (
-      this.getTargetRouteFromReturnTo(returnTo) || target || targetUrl || '/'
+      requestIdURL || this.getTargetRouteFromReturnTo(returnTo) || target || targetUrl || '/'
     );
+  }
+
+  getURLFromRequestId(requestId: string) {
+    if (!requestId) {
+      return '';
+    }
+
+    const str = window.localStorage.getItem(requestId);
+    const URL = str && str.replace(window.location.origin, '');
+    return URL;
   }
 
   private getTargetRouteFromReturnTo(returnTo) {
@@ -259,8 +286,7 @@ export class AuthService {
         // *info: this url change will remove the code and state from the URL
         // * this is need to avoid invalid state in the next refresh
         this.loading$.next(false);
-        log('authComplete$.subscribe > ', { targetRoute });
-        this.router.navigate([targetRoute]);
+        this.router.navigateByUrl(targetRoute);
       });
     }
   }
@@ -274,7 +300,7 @@ export class AuthService {
       // Call method to log in
       const request = {
         redirect_uri: redirectUri,
-        appState: { returnTo: this.currentHref },
+        appState: { returnTo: redirectPath },
       };
 
       log('request', { request });
