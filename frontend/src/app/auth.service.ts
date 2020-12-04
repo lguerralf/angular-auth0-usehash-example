@@ -198,12 +198,9 @@ export class AuthService {
     const cookieName = `auth-${this.auth0Options.domain}`;
     const cookieExists = this.getCookie(cookieName);
     if (cookieExists) {
-      log('cookieExists > ', { cookieExists });
       this.login();
       return;
     }
-
-    log('cookie dont exists ... ');
   }
 
   getCookie(cname) {
@@ -298,69 +295,23 @@ export class AuthService {
     }
   }
 
-  getRequestId(str: string) {
-    const requestId = `lfxheaderid-${new Date().getTime()}`;
-    window.localStorage.setItem(requestId, str);
-    return requestId;
-  }
 
   login(redirectPath: string = '/') {
-    // A desired redirect path can be passed to login method
-    // (e.g., from a route guard)
-    // Ensure Auth0 client instance exists
-    let redirectUri = `${this.auth0Options.callbackUrl}${window.location.search}`;
-    this.auth0Client$.subscribe((client: any) => {
-      // Call method to log in
-
-      let returnTo = redirectPath;
-      let requestId = undefined;
-
-      if (this.auth0Options.useRequestId) {
-        redirectUri = this.auth0Options.callbackUrl;
-        requestId = this.getRequestId(returnTo);
-        returnTo = undefined;
-      }
-
-      const appState = {
-        returnTo,
-        requestId,
-      };
-
-      const request = {
-        redirect_uri: redirectUri,
-        appState,
-      };
-
-      log('request', { request });
-
-      client.loginWithRedirect(request);
-    });
+    const button = document
+      .querySelector("#lfx-header")
+      .shadowRoot.querySelector(".lfx-header.is-login-link") as HTMLElement;
+    if (button) {
+      button.click();
+    }
   }
 
   logout() {
-    const { query, fragmentIdentifier } = querystring.parseUrl(
-      window.location.href,
-      { parseFragmentIdentifier: true }
-    );
-
-    const qs = {
-      ...query,
-      returnTo: window.location.href,
-    };
-
-    const searchStr = querystring.stringify(qs);
-    const searchPart = searchStr ? `?${searchStr}` : '';
-
-    const fragmentPart = fragmentIdentifier ? `#${fragmentIdentifier}` : '';
-
-    const logoutUrl = this.auth0Options.logoutUrl;
-
-    const request = {
-      client_id: this.auth0Options.clientId,
-      returnTo: `${logoutUrl}${searchPart}${fragmentPart}`,
-    };
-
-    this.auth0Client$.subscribe((client: any) => client.logout(request));
+    const button = document
+    .querySelector("#lfx-header")
+      .shadowRoot.querySelector(".lfx-header.is-logout-link") as HTMLElement;
+      if (button) {
+        button.click();
+      }
   }
 
   getTokenSilently$(options?): Observable<any> {
