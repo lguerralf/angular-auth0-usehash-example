@@ -245,6 +245,7 @@ export class AuthService {
 
     const str = window.localStorage.getItem(requestId);
     const URL = str && str.replace(window.location.origin, '');
+    window.localStorage.removeItem(requestId);
     return URL;
   }
 

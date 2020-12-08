@@ -27,6 +27,23 @@ export class LfxHeaderService {
     this.setUserInLFxHeader();
     this.setCallBackUrl();
     this.setLogoutUrl();
+    this.setBeforeHandlers();
+  }
+
+  setBeforeHandlers() {
+    console.log('entered setBeforeHandlers');
+    const lfHeaderEl: any = document.getElementById('lfx-header');
+    if (!lfHeaderEl) {
+      return;
+    }
+
+    lfHeaderEl.beforeLogin = () => {
+      console.log(' #### Done! before login redireciton')
+    }
+    lfHeaderEl.beforeLogout = async() => {
+      await 1;
+      console.log(' #### Done! before logout redirection and async')
+    }
   }
 
   setCallBackUrl() {
